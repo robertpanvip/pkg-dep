@@ -1,0 +1,18 @@
+[package]
+name = "resvg_bridge"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "resvg_bridge"
+# 作为 C 兼容的动态库导出，供 JNA 通过 C-ABI 调用。
+crate-type = ["cdylib"]
+
+[dependencies]
+# 与 IntelliJ SVG 编辑器插件锁定的版本一致：resvg 0.43 / usvg 0.43。
+resvg = "0.43"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

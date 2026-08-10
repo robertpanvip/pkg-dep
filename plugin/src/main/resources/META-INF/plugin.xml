@@ -1,0 +1,23 @@
+<idea-plugin>
+    <id>depslens</id>
+    <name>DepsLens</name>
+    <vendor email="you@example.com" url="https://github.com/your/deps-lens">you</vendor>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="DepsLens"
+                    anchor="right"
+                    icon="AllIcons.Toolwindows.ToolWindowChanges"
+                    factoryClass="depslens.plugin.DepsLensToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action id="DepsLens.UpgradePackage"
+                class="depslens.plugin.actions.UpgradePackageAction"
+                text="Upgrade Package..."
+                description="Upgrade a dependency and preview its impact">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
