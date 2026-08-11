@@ -32,7 +32,8 @@ object SvgRasterizer {
         transcoder.addTranscodingHint(ImageTranscoder.KEY_WIDTH, (WIDTH * SCALE).toFloat())
         transcoder.addTranscodingHint(ImageTranscoder.KEY_HEIGHT, (HEIGHT * SCALE).toFloat())
         val input = TranscoderInput(ByteArrayInputStream(svg.toByteArray(Charsets.UTF_8)))
-        transcoder.transcode(input, TranscoderOutput(null))
+        // 显式转型消除 TranscoderOutput(OutputStream) / (Document) 的重载歧义
+        transcoder.transcode(input, TranscoderOutput(null as java.io.OutputStream?))
         holder[0]
     }.getOrNull()
 }
