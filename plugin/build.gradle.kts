@@ -29,6 +29,11 @@ tasks.patchPluginXml {
     untilBuild.set("241.*")
 }
 
+// 产物 zip 默认用子项目名 plugin，改为 pkg-dep（与仓库名一致）：pkg-dep-<version>.zip
+tasks.buildPlugin {
+    archiveBaseName.set("pkg-dep")
+}
+
 // 本地调试：./gradlew :plugin:runIde
 tasks.runIde { }
 

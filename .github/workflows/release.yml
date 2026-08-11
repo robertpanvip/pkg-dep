@@ -58,6 +58,11 @@ jobs:
       # -PresvgBuild：CI 上用 cargo 编译 resvg_bridge，并把 .dll 拷入插件资源目录
       #   （不入库，符合 .gitignore 对 *.dll 的忽略约定）
       # -Pversion：让产物版本号与 tag / 手动输入的版本保持一致
+      - name: Clean previous distributions
+        shell: bash
+        # 清除历史遗留的旧命名 zip（如 plugin-*.zip），避免被 *.zip 通配误发布
+        run: rm -rf plugin/build/distributions
+
       - name: Build plugin
         # 必须用 bash 调用 gradlew（sh 脚本），不要用默认的 PowerShell 调 gradlew.bat：
         # PowerShell 把 `-Pversion=0.1.0` 这类含等号/点的参数传给 .bat 时会拆坏，
