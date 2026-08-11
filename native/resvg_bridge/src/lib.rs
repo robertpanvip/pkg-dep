@@ -1,13 +1,19 @@
 //! resvg_bridge —— DepsLens 的依赖图渲染后端。
 //!
-//! 通过 C-ABI 暴露 `svg_render_png_bytes`，把一段 UTF-8 SVG 文本光栅化成 PNG 字节，
-//! 由 JVM 侧（JNA 5.14.0）调用。底层用 usvg 解析 SVG、resvg 渲染，
-//! 字体库加载系统字体（Windows 上含 Segoe UI / Consolas 等），因此 SVG 中的
-//! `font-family="sans-serif"` 能正确渲染出节点标签。
+//! 通过 JNI 暴露 `Java_depslens_plugin_resvg_ResvgBridge_renderNative`，把一段 UTF-8
+//! SVG 文本光栅化成 PNG 字节（`jbyteArray`），由 JVM 侧直接 `System.load` 后调用，
+//! 不再依赖 JNA（IntelliJ Gradle 插件会把含 `com/sun/jna` 的 jar 当“平台已提供”剔除）。
+//! 底层用 usvg 解析 SVG、resvg 渲染，字体库加载系统字体（Windows 上含 Segoe UI /
+//! Consolas 等），因此 SVG 中的 `font-family="sans-serif"` 能正确渲染出节点标签。
+//!
+//! 同时保留 C-ABI 的 `svg_render_png_bytes` / `svg_free_bytes` 作为可替代的调用约定。
 
 use std::os::raw::c_int;
-use std::ptr;
 use std::slice;
+
+use jni::JNIEnv;
+use jni::objects::{JClass, JString};
+use jni::sys::jbyteArray;
 
 /// 把 SVG 文本渲染成 PNG 字节。
 ///
@@ -66,6 +72,32 @@ pub extern "C" fn svg_free_bytes(ptr: *mut u8, len: u64) {
     }
 }
 
+/// JNI 入口：对应 Java 侧 `depslens.plugin.resvg.ResvgBridge.renderNative(String)`。
+///
+/// 直接返回 `jbyteArray`（PNG 字节），由 JVM 的 GC 负责回收，无需调用方手动释放。
+/// 任一失败返回 `null`（JVM 侧据此返回 `null` 并展示错误）。
+///
+/// # 安全
+/// 这是 JNI 约定的 `extern "system"` 导出函数，由 JVM 在 `System.load` 后通过符号名调用。
+#[no_mangle]
+pub extern "system" fn Java_depslens_plugin_resvg_ResvgBridge_renderNative(
+    mut env: JNIEnv,
+    _class: JClass,
+    svg: JString,
+) -> jbyteArray {
+    let s = match env.get_string(&svg) {
+        Ok(j) => j.to_string_lossy().into_owned(),
+        Err(_) => return std::ptr::null_mut(),
+    };
+    match render_png(s.as_bytes()) {
+        Ok(png) => match env.byte_array_from_slice(&png) {
+            Ok(arr) => arr.into_raw(),
+            Err(_) => std::ptr::null_mut(),
+        },
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
 /// 内部渲染实现：SVG -> usvg 树 -> resvg 光栅化 -> PNG 编码。
 fn render_png(svg_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     use resvg::usvg;
@@ -87,7 +119,7 @@ fn render_png(svg_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     }
 
     let mut opt = usvg::Options::default();
-    opt.fontdb = fontdb;
+    opt.fontdb = std::sync::Arc::new(fontdb);
 
     let tree = usvg::Tree::from_data(svg_data, &opt)?;
 
@@ -96,7 +128,32 @@ fn render_png(svg_data: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let transform = usvg::Transform::from_scale(scale, scale);
 
     // 背景透明，深色底由 SVG 自身的 <rect> 提供。
-    let pixmap = resvg::render(&tree, transform, None).ok_or("resvg render failed")?;
-    let png = pixmap.encode_png()?;
+    let size = tree.size();
+    let w = (size.width() * scale) as u32;
+    let h = (size.height() * scale) as u32;
+    let mut buf = vec![0u8; (w * h * 4) as usize];
+    let mut pixmap = resvg::tiny_skia::PixmapMut::from_bytes(&mut buf, w, h)
+        .ok_or("无法创建像素缓冲")?;
+    resvg::render(&tree, transform, &mut pixmap);
+    let png = pixmap.as_ref().encode_png()?;
     Ok(png)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::render_png;
+
+    #[test]
+    fn smoke_render() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140">
+            <rect width="220" height="140" fill="#1e1e1e"/>
+            <circle cx="50" cy="70" r="18" fill="#4a9eff"/>
+            <text x="78" y="75" fill="#ccc" font-family="sans-serif" font-size="14">react</text>
+            <line x1="50" y1="70" x2="170" y2="70" stroke="#555" stroke-width="1"/>
+            <circle cx="170" cy="70" r="12" fill="#7d8590"/>
+        </svg>"##;
+        let png = render_png(svg.as_bytes()).expect("render failed");
+        assert!(png.len() > 100, "png too small");
+        std::fs::write("target/render_test.png", &png).unwrap();
+    }
 }

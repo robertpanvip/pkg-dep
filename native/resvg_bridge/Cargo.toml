@@ -5,12 +5,16 @@ edition = "2021"
 
 [lib]
 name = "resvg_bridge"
-# 作为 C 兼容的动态库导出，供 JNA 通过 C-ABI 调用。
+# 作为 C 兼容的动态库导出，供 JVM 通过 JNI 调用。
 crate-type = ["cdylib"]
 
 [dependencies]
 # 与 IntelliJ SVG 编辑器插件锁定的版本一致：resvg 0.43 / usvg 0.43。
+# 复用 resvg 内部 re-export 的 tiny_skia（resvg::tiny_skia），避免 tiny_skia 版本错配。
 resvg = "0.43"
+# JNI 绑定：直接导出 Java_* JNI 符号，无需 JNA（IntelliJ Gradle 插件会把含
+# com/sun/jna 的 jar 当作“平台已提供”而剔除，导致 JNA 无法编译/运行）。
+jni = "0.21"
 
 [profile.release]
 opt-level = 3

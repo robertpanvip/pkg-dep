@@ -1,10 +1,6 @@
 package depslens.plugin.resvg
 
-import com.intellij.util.SystemInfo
-import com.sun.jna.Native
-import com.sun.jna.Pointer
-import com.sun.jna.PointerByReference
-import com.sun.jna.ptr.LongByReference
+import com.intellij.openapi.util.SystemInfo
 import java.io.File
 
 /**
@@ -14,47 +10,40 @@ import java.io.File
  *   windows-x64/resvg_bridge.dll
  *   linux-x64/libresvg_bridge.so
  *   darwin-arm64/libresvg_bridge.dylib
- * 运行时从 jar 资源提取到临时文件，`System.load` 后再用 JNA 绑定。
+ * 运行时从 jar 资源提取到临时文件，`System.load` 后由 JVM 通过 JNI 调用
+ * [renderNative]（对应 Rust 导出的 `Java_depslens_plugin_resvg_ResvgBridge_renderNative`）。
+ *
+ * 注意：这里不使用 JNA。IntelliJ Gradle 插件会把含有 `com/sun/jna` 的 jar 当作
+ * “平台已提供”而从编译/运行 classpath 中剔除，导致 JNA 无法使用；直接用 JNI 更稳。
  *
  * 线程安全：加载仅发生一次（双重检查锁）。渲染本身无共享可变状态，可并发调用。
  */
 object ResvgBridge {
     @Volatile
-    private var lib: ResvgLib? = null
+    private var loaded = false
 
     /** 渲染 SVG 为 PNG 字节；任何失败（缺原生库、SVG 非法等）返回 null。 */
     fun render(svg: String): ByteArray? {
-        val l = ensureLoaded() ?: return null
-        val bytes = svg.toByteArray(Charsets.UTF_8)
-        val out = PointerByReference()
-        val outLen = LongByReference()
-        val rc = runCatching { l.svg_render_png_bytes(bytes, bytes.size, out, outLen) }
-            .getOrElse { return null }
-        if (rc != 0) return null
-        val ptr: Pointer = out.value ?: return null
-        val len = outLen.value.toInt()
-        return try {
-            ptr.getByteArray(0, len)
-        } finally {
-            runCatching { l.svg_free_bytes(ptr, outLen.value) }
-        }
+        if (!ensureLoaded()) return null
+        return runCatching { renderNative(svg) }.getOrNull()
     }
 
     @Synchronized
-    private fun ensureLoaded(): ResvgLib? {
-        lib?.let { return it }
-        val loaded = runCatching {
-            val resPath = "/native/${osDir()}/${libName()}"
-            val stream = ResvgBridge::class.java.getResourceAsStream(resPath)
-                ?: throw IllegalStateException("找不到原生库资源: $resPath")
-            val tmp = File.createTempFile("resvg_bridge", libExt()).apply { deleteOnExit() }
-            stream.use { input -> tmp.outputStream().use { out -> input.copyTo(out) } }
-            System.load(tmp.absolutePath)
-            Native.load("resvg_bridge", ResvgLib::class.java)
-        }.onFailure { it.printStackTrace() }.getOrNull()
-        lib = loaded
-        return loaded
+    private fun ensureLoaded(): Boolean {
+        if (loaded) return true
+        val resPath = "/native/${osDir()}/${libName()}"
+        val stream = ResvgBridge::class.java.getResourceAsStream(resPath) ?: return false
+        val tmp = File.createTempFile("resvg_bridge", libExt()).apply { deleteOnExit() }
+        stream.use { input -> tmp.outputStream().use { out -> input.copyTo(out) } }
+        val ok = runCatching { System.load(tmp.absolutePath) }
+            .onFailure { it.printStackTrace() }
+            .isSuccess
+        if (ok) loaded = true
+        return ok
     }
+
+    /** JNI 入口：传 SVG 文本，返回 PNG 字节（失败返回 null）。 */
+    external fun renderNative(svg: String): ByteArray?
 
     private fun osDir(): String = when {
         SystemInfo.isWindows -> "windows-x64"
@@ -69,5 +58,5 @@ object ResvgBridge {
         else -> ".so"
     }
 
-    private fun libName(): String = "resvg_bridge$libExt()"
+    private fun libName(): String = "resvg_bridge" + libExt()
 }

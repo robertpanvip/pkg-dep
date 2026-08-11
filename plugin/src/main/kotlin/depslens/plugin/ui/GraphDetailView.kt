@@ -1,89 +1,91 @@
 package depslens.plugin.ui
 
-import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.components.JBScrollPane
 import depslens.core.model.DependencyGraph
 import depslens.core.model.PackageRef
+import depslens.plugin.resvg.ResvgBridge
+import depslens.plugin.ui.graph.ForceLayout
+import depslens.plugin.ui.graph.SvgGraphRenderer
 import java.awt.BorderLayout
+import java.awt.Dimension
+import java.awt.Graphics
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
+import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * 依赖关系图：JCEF 加载内嵌的、无外部 CDN 的力导向图，渲染某节点的 N-hop 邻居。
- * 数据来自 DependencyGraph.neighborhood；中心节点高亮。
+ * 依赖关系图：选中节点后，Kotlin 端跑力导布局生成 SVG，交给 resvg 光栅化成 PNG，
+ * 再用 Swing 静态显示（不再使用 JCEF）。数据来自 DependencyGraph.neighborhood；
+ * 中心节点高亮。
  */
 class GraphDetailView : JPanel() {
-    private val browser = JBCefBrowser()
+    private val scroll = JBScrollPane()
+    private val imagePanel = ResvgImagePanel()
 
     init {
         layout = BorderLayout()
-        add(browser.component, BorderLayout.CENTER)
+        scroll.setViewportView(imagePanel)
+        add(scroll, BorderLayout.CENTER)
     }
 
     fun showRef(graph: DependencyGraph?, ref: PackageRef) {
         if (graph == null) {
-            browser.loadHTML("<html><body style='color:#ccc'>无依赖图</body></html>")
+            imagePanel.show(null, "无依赖图")
             return
         }
         val ids = graph.neighborhood(ref.id, hops = 2)
-        val nodes = ids.map { id ->
-            val n = graph.node(id)
-            mapOf(
-                "id" to id,
-                "label" to (n?.name ?: id),
-                "center" to (id == ref.id).toString(),
-            )
+        val edges = ids.flatMap { id ->
+            graph.dependenciesOf(id)
+                .filter { it.id in ids }
+                .map { ForceLayout.Edge(id, it.id) }
         }
-        val links = mutableListOf<Map<String, String>>()
-        ids.forEach { id ->
-            graph.dependenciesOf(id).forEach { d ->
-                if (d.id in ids) links.add(mapOf("source" to id, "target" to d.id))
-            }
+        val layout = ForceLayout.compute(ids, edges)
+        val svg = SvgGraphRenderer.render(layout, graph, ref, ids)
+        val png = ResvgBridge.render(svg)
+        if (png == null) {
+            imagePanel.show(null, "resvg 渲染失败（缺少原生库？请先构建 resvg_bridge）")
+            return
         }
-        val dataJson = """{"nodes":${nodes.toJson()},"links":${links.toJson()}}"""
-        browser.loadHTML(buildHtml(dataJson))
+        val img = runCatching { ImageIO.read(ByteArrayInputStream(png)) }.getOrNull()
+        if (img == null) {
+            imagePanel.show(null, "PNG 解码失败")
+            return
+        }
+        imagePanel.show(img, null)
+    }
+}
+
+/** 在逻辑尺寸画布上绘制 resvg 产出的高分辨率 PNG（按 IDE UI 缩放自动清晰）。 */
+class ResvgImagePanel : JComponent() {
+    private var image: BufferedImage? = null
+    private var message: String? = null
+    private val logicalW = 960
+    private val logicalH = 680
+
+    init {
+        preferredSize = Dimension(logicalW, logicalH)
     }
 
-    private fun buildHtml(dataJson: String): String = """
-        <!doctype html><html><head><meta charset="utf-8"><style>
-        html,body{margin:0;height:100%;background:#1e1e1e;color:#ddd;font-family:sans-serif;overflow:hidden}
-        canvas{display:block}#tip{position:absolute;left:8px;top:8px;font-size:12px;opacity:.7}
-        </style></head><body>
-        <div id="tip">依赖关系图（N-hop 邻居）</div><canvas id="c"></canvas>
-        <script>
-        const DATA = $dataJson;
-        const cv = document.getElementById('c'); const ctx = cv.getContext('2d');
-        let W,H; function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;} resize(); addEventListener('resize',resize);
-        const nodes = DATA.nodes.map(n => ({id:n.id,label:n.label,center:n.center==='true',x:Math.random()*W,y:Math.random()*H,vx:0,vy:0}));
-        const ix={}; nodes.forEach((n,i)=>ix[n.id]=i);
-        const links = DATA.links.map(l=>({s:ix[l.source],t:ix[l.target]}));
-        function tick(){
-          for(let i=0;i<nodes.length;i++){const a=nodes[i];
-            for(let j=i+1;j<nodes.length;j++){const b=nodes[j];
-              let dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy+0.01;
-              let f=140/d2; a.vx+=dx*f; a.vy+=dy*f; b.vx-=dx*f; b.vy-=dy*f;
-            }
-            a.vx+=(W/2-a.x)*0.002; a.vy+=(H/2-a.y)*0.002;
-          }
-          links.forEach(l=>{const a=nodes[l.s],b=nodes[l.t];
-            let dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy+0.01);
-            let f=(d-90)*0.01; a.vx+=dx/d*f; a.vy+=dy/d*f; b.vx-=dx/d*f; b.vy-=dy/d*f;
-          });
-          nodes.forEach(n=>{n.x+=n.vx; n.y+=n.vy; n.vx*=0.85; n.vy*=0.85;
-            n.x=Math.max(10,Math.min(W-10,n.x)); n.y=Math.max(10,Math.min(H-10,n.y));});
-          ctx.clearRect(0,0,W,H);
-          links.forEach(l=>{const a=nodes[l.s],b=nodes[l.t];ctx.strokeStyle='#555';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
-          nodes.forEach(n=>{ctx.fillStyle=n.center?'#4a9eff':'#7d8590';ctx.beginPath();ctx.arc(n.x,n.y,n.center?9:6,0,7);ctx.fill();
-            ctx.fillStyle='#ccc';ctx.font='11px sans-serif';ctx.fillText(n.label,n.x+10,n.y+3);});
-          requestAnimationFrame(tick);
+    fun show(img: BufferedImage?, msg: String?) {
+        image = img
+        message = msg
+        revalidate()
+        repaint()
+    }
+
+    override fun paintComponent(g: Graphics) {
+        super.paintComponent(g)
+        val img = image
+        if (img != null) {
+            // Graphics 上下文已按 IDE 的 UI 缩放（Retina 为 2x），
+            // 把 2x 超采样的 PNG 缩绘到逻辑尺寸即清晰。
+            g.drawImage(img, 0, 0, logicalW, logicalH, null)
+        } else {
+            g.color = java.awt.Color(0xcc, 0xcc, 0xcc)
+            g.font = g.font.deriveFont(13f)
+            g.drawString(message ?: "", 12, 26)
         }
-        tick();
-        </script></body></html>
-    """.trimIndent()
-
-    private fun List<Map<String, String>>.toJson(): String =
-        "[" + joinToString(",") { m ->
-            "{" + m.entries.joinToString(",") { "\"${it.key}\":\"${it.value.escape()}\"" } + "}"
-        } + "]"
-
-    private fun String.escape(): String =
-        replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+    }
 }
