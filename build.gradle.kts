@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.9.24" apply false
-    id("org.jetbrains.intellij") version "1.17.4" apply false
+    kotlin("jvm") version "2.1.10" apply false
+    id("org.jetbrains.intellij") version "2.16.0" apply false
 }
 
 allprojects {

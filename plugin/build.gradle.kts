@@ -7,33 +7,30 @@ kotlin {
     jvmToolchain(17)
 }
 
-// IntelliJ Platform Gradle Plugin 1.x：用 intellij {} 配置。
+// IntelliJ Platform Gradle Plugin 2.x：用 intellij {} 配置目标平台。
 intellij {
     // 前端项目一般用 Ultimate（自带 NodeJS 支持）；社区版(IC)无 Node 检测。
-    version.set("2023.2")
-    type.set("IU")
-    // 如需显式依赖 Node 能力，可加：plugins.set(listOf("JavaScript"))
+    version = "2025.1"
+    type = "IU"
 }
 
 dependencies {
     implementation(project(":core"))
-    // 依赖图 SVG 直接复用 IntelliJ 平台自带的 SVG 渲染器（com.intellij.util.SVGLoader：
-    // 2023.2 底层为 Batik、251+ 为 JSVG 分支），不打包任何第三方 SVG 库，无原生代码、无跨平台原生库、CI 无需 Rust。
+    // 依赖图 SVG 直接调用 IntelliJ 平台底层的 SVG 渲染引擎（com.intellij.ui.svg.loadSvg，
+    // 即 SVGLoader 内部委托的 JSVG 实现），不打包任何第三方 SVG 库，无原生代码、无跨平台原生库。
 }
 
-// IDE 版本兼容：最低 251（2025.1）。untilBuild 设为空字符串，使插件对当前及未来 IDE 版本开放兼容
-// （IntelliJ Gradle 插件默认会把 untilBuild 填成编译平台版本 232.*，反而把 WebStorm 2026.2/WS-262 挡在门外，故显式清空）。
-tasks.patchPluginXml {
-    sinceBuild.set("251")
-    untilBuild.set("")
+// IDE 版本兼容：最低 251（2025.1），与编译平台一致（251 起平台强制 Kotlin 2.0+ 与 Gradle 插件 2.x）。
+// untilBuild 留空表示对更高版本开放兼容（243+ 起 Gradle 插件会忽略 until-build，插件可装在当前及未来 IDE 上）。
+patchPluginXml {
+    sinceBuild = "251"
+    untilBuild = ""
 }
 
 // 产物 zip 默认用子项目名 plugin，改为 pkg-dep（与仓库名一致）：pkg-dep-<version>.zip
-tasks.buildPlugin {
-    archiveBaseName.set("pkg-dep")
+buildPlugin {
+    archiveBaseName = "pkg-dep"
 }
 
 // 本地调试：./gradlew :plugin:runIde
-tasks.runIde { }
-
-// 无需原生构建步骤：依赖图 SVG 由平台自带 SVGLoader 光栅化（2023.2=Batik / 251+=JSVG），无 Rust / JNI / 第三方 SVG 库 / 跨平台原生库。
+runIde { }
