@@ -24,9 +24,11 @@ dependencies {
     // classpath，导致 JNA 无法使用。JNI 方式无任何额外 Java 依赖。
 }
 
+// IDE 版本兼容：最低 251（2025.1）。untilBuild 设为空字符串，使插件对当前及未来 IDE 版本开放兼容
+// （IntelliJ Gradle 插件默认会把 untilBuild 填成编译平台版本 232.*，反而把 WebStorm 2026.2/WS-262 挡在门外，故显式清空）。
 tasks.patchPluginXml {
-    sinceBuild.set("232")
-    untilBuild.set("241.*")
+    sinceBuild.set("251")
+    untilBuild.set("")
 }
 
 // 产物 zip 默认用子项目名 plugin，改为 pkg-dep（与仓库名一致）：pkg-dep-<version>.zip
