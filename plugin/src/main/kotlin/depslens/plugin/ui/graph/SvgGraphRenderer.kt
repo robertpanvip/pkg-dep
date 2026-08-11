@@ -5,11 +5,11 @@ import depslens.core.model.PackageRef
 import java.awt.Point
 
 /**
- * 把力导布局结果渲染成暗色主题的 SVG 字符串，交给 resvg 光栅化。
+ * 把力导布局结果渲染成暗色主题的 SVG 字符串，交给平台 SVGLoader 光栅化成位图。
  *
  * - 边：灰色连线。
  * - 节点：中心节点蓝色高亮、顶级依赖灰色、间接依赖更暗；圆 + 标签。
- * - 深色底由 <rect> 提供（resvg 背景透明）。
+ * - 深色底由 <rect> 提供（SVGLoader 背景透明）。
  */
 object SvgGraphRenderer {
     private const val WIDTH = 960

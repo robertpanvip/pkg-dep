@@ -14,13 +14,13 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * 依赖关系图：选中节点后，Kotlin 端跑力导布局生成 SVG，再用 Apache Batik 光栅化成
+ * 依赖关系图：选中节点后，Kotlin 端跑力导布局生成 SVG，再用平台自带的 SVGLoader 光栅化成
  * BufferedImage，由 Swing 静态显示（无 JCEF、无原生库）。数据来自
  * DependencyGraph.neighborhood；中心节点高亮。
  */
 class GraphDetailView : JPanel() {
     private val scroll = JBScrollPane()
-    private val imagePanel = ResvgImagePanel()
+    private val imagePanel = SvgImagePanel()
 
     init {
         layout = BorderLayout()
@@ -50,8 +50,8 @@ class GraphDetailView : JPanel() {
     }
 }
 
-/** 在逻辑尺寸画布上绘制 resvg 产出的高分辨率 PNG（按 IDE UI 缩放自动清晰）。 */
-class ResvgImagePanel : JComponent() {
+/** 在逻辑尺寸画布上绘制平台 SVGLoader 产出的高分辨率位图（按 IDE UI 缩放自动清晰）。 */
+class SvgImagePanel : JComponent() {
     private var image: BufferedImage? = null
     private var message: String? = null
     private val logicalW = 960

@@ -5,7 +5,7 @@ import java.awt.Point
 /**
  * 轻量力导向布局（Fruchterman–Reingold 变体），在 Kotlin 端把依赖图算成坐标。
  *
- * resvg 只负责把 SVG 光栅化，布局必须在 JVM 侧完成（没有 D3）。这里用确定性随机种子，
+ * 平台 SVGLoader 只负责把 SVG 光栅化，布局必须在 JVM 侧完成（没有 D3）。这里用确定性随机种子，
  * 保证同一子图每次渲染位置稳定，便于对比。
  */
 object ForceLayout {

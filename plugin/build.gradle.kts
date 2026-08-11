@@ -17,8 +17,8 @@ intellij {
 
 dependencies {
     implementation(project(":core"))
-    // 依赖图 SVG 由 Apache Batik（纯 Java）光栅化为 BufferedImage：无原生代码、无跨平台原生库、CI 无需 Rust。
-    implementation("org.apache.xmlgraphics:batik-all:1.18")
+    // 依赖图 SVG 直接复用 IntelliJ 平台自带的 SVG 渲染器（com.intellij.util.SVGLoader：
+    // 2023.2 底层为 Batik、251+ 为 JSVG 分支），不打包任何第三方 SVG 库，无原生代码、无跨平台原生库、CI 无需 Rust。
 }
 
 // IDE 版本兼容：最低 251（2025.1）。untilBuild 设为空字符串，使插件对当前及未来 IDE 版本开放兼容
@@ -36,4 +36,4 @@ tasks.buildPlugin {
 // 本地调试：./gradlew :plugin:runIde
 tasks.runIde { }
 
-// 无需原生构建步骤：依赖图 SVG 由 Apache Batik（纯 Java）光栅化，无 Rust / JNI / 跨平台原生库。
+// 无需原生构建步骤：依赖图 SVG 由平台自带 SVGLoader 光栅化（2023.2=Batik / 251+=JSVG），无 Rust / JNI / 第三方 SVG 库 / 跨平台原生库。
