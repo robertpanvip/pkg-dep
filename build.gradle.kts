@@ -5,7 +5,8 @@ plugins {
 
 allprojects {
     group = "depslens"
-    version = "0.1.0"
+    // 默认 0.1.0；release 工作流通过 -Pversion=<tag> 覆盖，使产物版本与 tag 一致
+    version = providers.gradleProperty("version").getOrElse("0.1.0")
 }
 
 subprojects {
