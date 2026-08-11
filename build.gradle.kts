@@ -1,6 +1,8 @@
 plugins {
     kotlin("jvm") version "2.1.10" apply false
-    id("org.jetbrains.intellij") version "2.16.0" apply false
+    // 注意：2025.1 + Kotlin 2.0+ 需用「IntelliJ Platform Gradle Plugin」(org.jetbrains.intellij.platform)，
+    // 旧的 org.jetbrains.intellij 在 1.17.4 即停止，没有 2.x；2.x 是另一个插件 id。
+    id("org.jetbrains.intellij.platform") version "2.18.1" apply false
 }
 
 allprojects {
