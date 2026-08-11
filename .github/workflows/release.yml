@@ -59,7 +59,11 @@ jobs:
       #   （不入库，符合 .gitignore 对 *.dll 的忽略约定）
       # -Pversion：让产物版本号与 tag / 手动输入的版本保持一致
       - name: Build plugin
-        run: ./gradlew :plugin:buildPlugin -PresvgBuild -Pversion=${{ steps.version.outputs.value }} --no-daemon
+        # 必须用 bash 调用 gradlew（sh 脚本），不要用默认的 PowerShell 调 gradlew.bat：
+        # PowerShell 把 `-Pversion=0.1.0` 这类含等号/点的参数传给 .bat 时会拆坏，
+        # 导致 Gradle 误把 `0.1.0` 当成任务名而报 “Task '.1.0' not found”。
+        shell: bash
+        run: ./gradlew :plugin:buildPlugin -PresvgBuild -Pversion="${{ steps.version.outputs.value }}" --no-daemon --stacktrace
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
