@@ -5,6 +5,8 @@
 
     <depends>com.intellij.modules.platform</depends>
 
+    <notificationGroup id="DepsLens" displayType="BALLOON"/>
+
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="DepsLens"
                     anchor="right"

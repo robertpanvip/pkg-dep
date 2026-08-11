@@ -32,13 +32,7 @@ jobs:
           distribution: 'jetbrains'
           java-version: '17'
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache cargo build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: 'native/resvg_bridge'
+      # 无需 Rust 工具链：依赖图 SVG 由 Apache Batik（纯 Java）光栅化，跨平台无需原生编译。
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -55,8 +49,6 @@ jobs:
             echo "value=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
-      # -PresvgBuild：CI 上用 cargo 编译 resvg_bridge，并把 .dll 拷入插件资源目录
-      #   （不入库，符合 .gitignore 对 *.dll 的忽略约定）
       # -Pversion：让产物版本号与 tag / 手动输入的版本保持一致
       - name: Clean previous distributions
         shell: bash
@@ -68,7 +60,7 @@ jobs:
         # PowerShell 把 `-Pversion=0.1.0` 这类含等号/点的参数传给 .bat 时会拆坏，
         # 导致 Gradle 误把 `0.1.0` 当成任务名而报 “Task '.1.0' not found”。
         shell: bash
-        run: ./gradlew :plugin:buildPlugin -PresvgBuild -Pversion="${{ steps.version.outputs.value }}" --no-daemon --stacktrace
+        run: ./gradlew :plugin:buildPlugin -Pversion="${{ steps.version.outputs.value }}" --no-daemon --stacktrace
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

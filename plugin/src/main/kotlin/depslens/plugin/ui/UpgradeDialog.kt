@@ -8,6 +8,7 @@ import com.intellij.ui.components.JBScrollPane
 import depslens.core.impact.ImpactAnalyzer
 import depslens.core.impact.ImpactResult
 import depslens.core.model.PackageRef
+import depslens.plugin.DepsLensNotifier
 import depslens.plugin.DepsLensProjectService
 import kotlinx.coroutines.launch
 import java.awt.BorderLayout
@@ -73,14 +74,28 @@ class UpgradeDialog(
     override fun doOKAction() {
         val target = targetField.text.trim()
         if (target.isEmpty()) { super.doOKAction(); return }
-        val base = File(project.basePath ?: return)
-        val pm = service.packageManager ?: return
-        // 异步写回 lockfile（不阻塞 UI），完成后重新解析并通知刷新
+        val basePath = project.basePath
+        if (basePath == null) { super.doOKAction(); return }
+        val base = File(basePath)
+        val pm = service.packageManager
+        if (pm == null) { super.doOKAction(); return }
+
+        val pkgName = ref.name
+        // 异步写回 lockfile（不阻塞 UI），完成后以通知反馈结果
         service.scope().launch {
-            pm.applyUpgrade(base, ref.name, target)
-            service.detectAndParse()
-            service.refreshLatest()
-            service.notifyRefreshed()
+            try {
+                pm.applyUpgrade(base, pkgName, target)
+            } catch (e: Exception) {
+                DepsLensNotifier.error(project, pkgName, target, e)
+                return@launch
+            }
+            // 写回成功：重新解析与刷新（网络失败不阻断升级结果反馈）
+            try {
+                service.detectAndParse()
+                service.refreshLatest()
+                service.notifyRefreshed()
+            } catch (_: Exception) { /* 刷新失败不影响升级本身 */ }
+            DepsLensNotifier.success(project, pkgName, target)
         }
         super.doOKAction()
     }

@@ -3,22 +3,20 @@ package depslens.plugin.ui
 import com.intellij.ui.components.JBScrollPane
 import depslens.core.model.DependencyGraph
 import depslens.core.model.PackageRef
-import depslens.plugin.resvg.ResvgBridge
+import depslens.plugin.svg.SvgRasterizer
 import depslens.plugin.ui.graph.ForceLayout
 import depslens.plugin.ui.graph.SvgGraphRenderer
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.Graphics
 import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import javax.imageio.ImageIO
 import javax.swing.JComponent
 import javax.swing.JPanel
 
 /**
- * 依赖关系图：选中节点后，Kotlin 端跑力导布局生成 SVG，交给 resvg 光栅化成 PNG，
- * 再用 Swing 静态显示（不再使用 JCEF）。数据来自 DependencyGraph.neighborhood；
- * 中心节点高亮。
+ * 依赖关系图：选中节点后，Kotlin 端跑力导布局生成 SVG，再用 Apache Batik 光栅化成
+ * BufferedImage，由 Swing 静态显示（无 JCEF、无原生库）。数据来自
+ * DependencyGraph.neighborhood；中心节点高亮。
  */
 class GraphDetailView : JPanel() {
     private val scroll = JBScrollPane()
@@ -43,14 +41,9 @@ class GraphDetailView : JPanel() {
         }
         val layout = ForceLayout.compute(ids, edges)
         val svg = SvgGraphRenderer.render(layout, graph, ref, ids)
-        val png = ResvgBridge.render(svg)
-        if (png == null) {
-            imagePanel.show(null, "resvg 渲染失败（缺少原生库？请先构建 resvg_bridge）")
-            return
-        }
-        val img = runCatching { ImageIO.read(ByteArrayInputStream(png)) }.getOrNull()
+        val img = SvgRasterizer.render(svg)
         if (img == null) {
-            imagePanel.show(null, "PNG 解码失败")
+            imagePanel.show(null, "依赖图渲染失败（SVG 光栅化异常）")
             return
         }
         imagePanel.show(img, null)
