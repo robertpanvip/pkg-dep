@@ -21,6 +21,9 @@ native/*/target/
 .workbuddy/
 *.bak
 
+# IntelliJ Platform local cache (downloaded SDK artifacts, lock files)
+.intellijPlatform/
+
 # Headless drag-test artefacts
 dragtest_*.png
 app/dragtest_*.png

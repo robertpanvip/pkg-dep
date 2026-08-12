@@ -41,9 +41,14 @@ class NpmPackageManager(
         )
 
     override fun applyUpgrade(projectDir: File, pkg: String, version: String) {
+        // 真实安装：写回 package.json + package-lock.json 并下载到 node_modules
         executor.exec(
-            listOf("npm", "install", "$pkg@$version", "--package-lock-only"),
+            listOf("npm", "install", "$pkg@$version"),
             projectDir,
         )
+    }
+
+    override fun installDependency(projectDir: File, pkg: String, spec: String) {
+        executor.exec(listOf("npm", "install", "$pkg@$spec"), projectDir)
     }
 }

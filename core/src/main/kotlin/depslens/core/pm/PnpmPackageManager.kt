@@ -35,4 +35,8 @@ class PnpmPackageManager(
     override fun applyUpgrade(projectDir: File, pkg: String, version: String) {
         executor.exec(listOf("pnpm", "up", "$pkg@$version"), projectDir)
     }
+
+    override fun installDependency(projectDir: File, pkg: String, spec: String) {
+        executor.exec(listOf("pnpm", "add", "$pkg@$spec"), projectDir)
+    }
 }

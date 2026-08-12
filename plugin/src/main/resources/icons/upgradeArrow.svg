@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="Upgrade">
-  <g fill="none" stroke="#5C6370" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 13 V4"/>
-    <path d="M4.8 7.2 L8 4 L11.2 7.2"/>
-    <path d="M4.5 13 H11.5"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="Upgrade available">
+  <g fill="none" stroke="#59A869" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 12.5 V4.5"/>
+    <path d="M5 7.5 L8 4.5 L11 7.5"/>
   </g>
 </svg>

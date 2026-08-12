@@ -15,6 +15,10 @@ object DepsLensNotifier {
         notify(project, "升级成功", "已将 $pkg 升级到 $target，并重新解析了依赖图。", NotificationType.INFORMATION)
     }
 
+    fun installed(project: Project, pkg: String, spec: String) {
+        notify(project, "安装成功", "已将 $pkg@$spec 安装到 node_modules。", NotificationType.INFORMATION)
+    }
+
     fun error(project: Project, pkg: String, target: String, e: Throwable) {
         val firstLine = (e.message ?: e.toString()).lineSequence().firstOrNull().orEmpty().take(200)
         notify(project, "升级失败", "$pkg -> $target 失败：$firstLine", NotificationType.ERROR)

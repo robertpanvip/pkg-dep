@@ -29,4 +29,7 @@ interface PackageManager {
 
     /** 真实升级并写回 lockfile（异步 + 可取消由调用方保证）。 */
     fun applyUpgrade(projectDir: File, pkg: String, version: String)
+
+    /** 安装（或新增）依赖到 node_modules：npm 用 install、pnpm/yarn 用 add。 */
+    fun installDependency(projectDir: File, pkg: String, spec: String)
 }

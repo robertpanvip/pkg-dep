@@ -35,4 +35,8 @@ class YarnPackageManager(
     override fun applyUpgrade(projectDir: File, pkg: String, version: String) {
         executor.exec(listOf("yarn", "up", "$pkg@$version"), projectDir)
     }
+
+    override fun installDependency(projectDir: File, pkg: String, spec: String) {
+        executor.exec(listOf("yarn", "add", "$pkg@$spec"), projectDir)
+    }
 }
