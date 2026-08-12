@@ -23,15 +23,21 @@ class UpgradeDialog(
     private val project: Project,
     private val service: DepsLensProjectService,
     private val ref: PackageRef,
+    targetOverride: String? = null,
+    autoPreview: Boolean = false,
 ) : DialogWrapper(project) {
 
-    private val targetField = JTextField(service.latestVersions[ref.name] ?: "", 20)
+    private val targetField = JTextField(targetOverride ?: service.latestVersions[ref.name] ?: "", 20)
     private val previewList = JBList<String>()
     private val analyzer = service.impactAnalyzer()
 
     init {
         title = "升级 ${ref.name}"
         init()
+        // gutter 入口调用：传入目标版本后立刻展示影响，无需再点「预览影响」
+        if (autoPreview && analyzer != null && targetField.text.isNotBlank()) {
+            preview()
+        }
     }
 
     override fun createCenterPanel(): JComponent {
@@ -53,8 +59,12 @@ class UpgradeDialog(
         val base = File(project.basePath ?: return)
         val graph = service.graph ?: return
         service.scope().launch {
-            val result = analyzer.analyze(base, graph, ref.name, target)
-            ApplicationManager.getApplication().invokeLater { renderPreview(result) }
+            val outcome = runCatching { analyzer.analyze(base, graph, ref.name, target) }
+            ApplicationManager.getApplication().invokeLater {
+                outcome.onSuccess { renderPreview(it) }.onFailure { e ->
+                    previewList.setListData(arrayOf("影响分析失败：${e.message ?: e.javaClass.simpleName}"))
+                }
+            }
         }
     }
 

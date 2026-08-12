@@ -4,6 +4,7 @@
     <vendor email="you@example.com" url="https://github.com/your/deps-lens">you</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.json</depends>
 
     <notificationGroup id="DepsLens" displayType="BALLOON"/>
 
@@ -12,6 +13,9 @@
                     anchor="right"
                     icon="icons/depsLens.svg"
                     factoryClass="depslens.plugin.DepsLensToolWindowFactory"/>
+        <codeInsight.lineMarkerProvider
+                language="JSON"
+                implementationClass="depslens.plugin.gutter.PackageJsonUpgradeLineMarkerProvider"/>
     </extensions>
 
     <actions>
