@@ -23,6 +23,10 @@ dependencies {
         // intellijIdeaUltimate 为遗留辅助函数，适用于 2025.3 之前的版本（2025.1 可用）。
         intellijIdeaUltimate("2025.1")
 
+        // JSON 是 2024.3 起独立的 bundled 插件：<depends>com.intellij.modules.json</depends>
+        // 只管运行时，编译期必须显式声明，否则 com.intellij.json.psi.* 无法解析。
+        bundledPlugin("com.intellij.modules.json")
+
         // instrumentationTools() 在 2.x 已移除，默认由 javaCompiler() 处理字节码插桩；
         // pluginVerifier() 默认已添加（verifyPlugin 任务可用），无需显式声明。
     }

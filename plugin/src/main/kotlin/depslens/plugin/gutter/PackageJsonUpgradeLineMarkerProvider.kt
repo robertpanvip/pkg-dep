@@ -17,6 +17,7 @@ import depslens.core.model.DepKind
 import depslens.core.model.PackageRef
 import depslens.plugin.DepsLensProjectService
 import depslens.plugin.ui.UpgradeDialog
+import kotlinx.coroutines.launch
 
 /**
  * package.json 入口：在 dependencies / devDependencies 下每个依赖行左侧，
@@ -47,13 +48,12 @@ class PackageJsonUpgradeLineMarkerProvider : LineMarkerProvider {
             onUpgradeClick(project, name, declaredRange, kind)
         }
         return LineMarkerInfo(
-            element = element,
-            range = element.textRange,
-            icon = icon,
-            tooltipProvider = { _ -> "DepsLens：升级 $name 并预览影响" },
-            navHandler = handler,
-            alignment = com.intellij.codeInsight.daemon.GutterIconRenderer.Alignment.LEFT,
-            altIcon = null,
+            element,
+            element.textRange,
+            icon,
+            { _: PsiElement -> "DepsLens：升级 $name 并预览影响" },
+            handler,
+            com.intellij.openapi.editor.markup.GutterIconRenderer.Alignment.LEFT,
         )
     }
 
