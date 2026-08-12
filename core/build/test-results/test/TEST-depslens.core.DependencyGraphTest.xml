@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="depslens.core.DependencyGraphTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-08-10T16:05:51.279Z" hostname="PC-202307091544" time="0.341">
-  <properties/>
-  <testcase name="dependents and dependencies are tracked()" classname="depslens.core.DependencyGraphTest" time="0.221"/>
-  <testcase name="neighborhood returns N-hop neighbors()" classname="depslens.core.DependencyGraphTest" time="0.119"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
